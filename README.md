@@ -11,7 +11,7 @@ The main goals are:
 - Getting WebGL2 textures in and out from takeshijs should be easy, for example to do post processing.
 
 Future goals are:
-- A way to write simple kernels in TypeScript and have them compiled.
+- A way to write simpler kernels in ES6 and have them compiled.
 
 Known limitations:
 - You can not operate on image data in place: this is a restriction due to OpenGL where writing and reading from the same image is undefined behaviour.
@@ -20,19 +20,28 @@ Known limitations:
 # API sketch
 
 ~~~typescript
-let inputtex = context.createImage([2, 2], RGBChannels("diffuse"), FloatChannel("z"));
+let context = takeshi.fromGLContext(gl);
 
-inputTex.updateData("diffuse", new Float32Array[1,1,1, 2,2,2, 3,3,3, 4,4,4]);
-inputTex.updateData("z", new Float32Array[1,2,3,4]);
+let textureTypes = context.textureTypes;
 
-let outputtex = context.createImage([2, 2], RGBChannels("diffuse"));
+let inputs = { 
+    diffuse: context.createTexture([2, 2], textureTypes.RGB16F),
+    z: context.createTexture([2, 2], textureTypes.R16F),
+};
+
+inputs.diffuse.loadData(new Float32Array([1,1,1, 2,2,2, 3,3,3, 4,4,4]));
+inputs.z.loadData(new Float32Array([1,2,3,4]));
+
+let outputs = {
+    color: context.createRGBTexture([2, 2], textureTypes.RGB8)
+};
 
 let kernel = context.createKernel(`
     void kernel(vec2 pos, vec2 size) 
     {
-        out_diffuse = texture(in_diffuse).rgb * 0.2;
+        out_diffuse = texture(in_diffuse).rgb * z;
     }
-`, tex.getChannelSpecs());
+`, inputs, outputs);
 
-context.execute(kernel, inputtex, outputtex);
+context.execute(kernel, inputs.diffuse, outputs.color);
 ~~~ 
